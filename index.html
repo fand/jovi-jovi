@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>JOVI JOVI</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: black;
+      }
+      * {
+        color: white;
+        box-sizing: border-box;
+        font-family: sans-serif;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+      }
+      header button {
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      .buttons {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+
+        padding: 16px;
+        gap: 16px;
+      }
+      .buttons button {
+        background: none;
+        border: 1px solid white;
+        flex: 1;
+        cursor: pointer;
+      }
+      .buttons button:active {
+        border: 1px solid red;
+      }
+    </style>
+    <link data-trunk data-bin rel="copy-dir" href="wav" />
+  </head>
+</html>
