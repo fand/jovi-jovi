@@ -11,6 +11,7 @@ wasm-logger = "0.2.0"
 log = "0.4.6"
 wasm-bindgen = "0.2.83"
 wasm-bindgen-futures = "0.4.33"
+gloo-utils = "0.1.4"
 
 [dependencies.web-sys]
 version = "0.3.4"

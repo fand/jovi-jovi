@@ -44,22 +44,28 @@ impl Component for Model {
 #[derive(Properties, PartialEq)]
 struct ButtonProps {
     name: String,
+    onchange: Callback<bool>,
 }
 
 #[function_component(Button)]
-fn button(ButtonProps { name }: &ButtonProps) -> html {
-    let audio = web_sys::HtmlAudioElement::new_with_src("wav/joy.wav").expect("failed to load");
+fn button(ButtonProps { name, onchange }: &ButtonProps) -> html {
+    let onmousedown = {
+        let onchange = onchange.clone();
+        Callback::from(move |_| {
+            // let prom = audio.play().expect("failed to play");
+            onchange.emit(true);
+            ()
+        })
+    };
 
-    let onmousedown = Callback::from(move|_| {
-        let prom = audio.play().expect("failed to play");
-        ()
-    });
-
-    let onmouseup = Callback::from(move |_| {
-        audio.pause();
-
-        ()
-    });
+    let onmouseup = {
+        let onchange = onchange.clone();
+        Callback::from(move |_| {
+            // audio.pause();
+            onchange.emit(false);
+            ()
+        })
+    };
 
     html! {
         <>
@@ -71,6 +77,30 @@ fn button(ButtonProps { name }: &ButtonProps) -> html {
 #[function_component(App)]
 fn app() -> html {
     let names = vec!["Joy Division", "Joy", "Divi", "John"];
+    let is_playing = use_state(|| false);
+
+    let audio = use_ref(|| {
+        let audio = web_sys::HtmlAudioElement::new_with_src("wav/joy.wav").expect("failed to load");
+        audio.set_loop(true);
+        audio
+    });
+
+    use_effect_with_deps(
+        move |is_playing| {
+            if *is_playing {
+                audio.play().expect("failed to play");
+                // log::info!("isPlaying: true");
+            } else {
+                audio.pause().expect("failed to pause");
+                audio.set_current_time(0.0);
+                // log::info!("isPlaying: false");
+            }
+            || {}
+        },
+        *is_playing,
+    );
+
+    let onchange = Callback::from(move |playing: bool| is_playing.set(playing));
 
     html! {
         <>
@@ -84,7 +114,7 @@ fn app() -> html {
                 </div>
             </header>
             <div class="buttons">
-            { names.iter().map(|name| html! { <Button name={name.to_string()}/> }).collect::<Html>() }
+            { names.iter().map(|name| html! { <Button name={name.to_string()} onchange={onchange.clone()}/> }).collect::<Html>() }
             </div>
         </>
     }
