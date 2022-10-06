@@ -1,8 +1,29 @@
 use wasm_bindgen::{prelude::Closure, JsCast};
-use web_sys::window;
 // use wasm_bindgen::prelude::Closure;
 // use web_sys::*;
 use yew::prelude::*;
+
+#[derive(PartialEq, Clone)]
+enum Voice {
+    JoyDivision,
+    Joy,
+    Divi,
+    John,
+}
+
+impl Voice {
+    pub fn voices() -> Vec<Voice> {
+        vec![Voice::JoyDivision, Voice::Joy, Voice::Divi, Voice::John]
+    }
+    pub fn name(&self) -> String {
+        match self {
+            Voice::JoyDivision => "Joy Division".to_string(),
+            Voice::Joy => "Joy".to_string(),
+            Voice::Divi => "Divi".to_string(),
+            Voice::John => "John".to_string(),
+        }
+    }
+}
 
 enum Msg {
     AddOne,
@@ -45,12 +66,12 @@ impl Component for Model {
 
 #[derive(Properties, PartialEq)]
 struct ButtonProps {
-    name: String,
+    voice: Voice,
     onchange: Callback<bool>,
 }
 
 #[function_component(Button)]
-fn button(ButtonProps { name, onchange }: &ButtonProps) -> html {
+fn button(ButtonProps { voice, onchange }: &ButtonProps) -> html {
     let onmousedown = {
         let onchange = onchange.clone();
         Callback::from(move |_| {
@@ -71,14 +92,15 @@ fn button(ButtonProps { name, onchange }: &ButtonProps) -> html {
 
     html! {
         <>
-            <button type="button" onmousedown={onmousedown} onmouseup={onmouseup}>{ name }</button>
+            <button type="button" onmousedown={onmousedown} onmouseup={onmouseup}>{ voice.name() }</button>
         </>
     }
 }
 
 #[function_component(App)]
 fn app() -> html {
-    let names = vec!["Joy Division", "Joy", "Divi", "John"];
+    let voices = Voice::voices();
+
     let is_playing = use_state(|| false);
 
     let audio = use_ref(|| {
@@ -141,7 +163,7 @@ fn app() -> html {
                 </div>
             </header>
             <div class="buttons">
-            { names.iter().map(|name| html! { <Button name={name.to_string()} onchange={onchange.clone()}/> }).collect::<Html>() }
+            { voices.iter().map(|voice| html! { <Button voice={voice.clone()} onchange={onchange.clone()}/> }).collect::<Html>() }
             </div>
         </>
     }
