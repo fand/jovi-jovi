@@ -1,3 +1,5 @@
+use wasm_bindgen::{prelude::Closure, JsCast};
+use web_sys::window;
 // use wasm_bindgen::prelude::Closure;
 // use web_sys::*;
 use yew::prelude::*;
@@ -84,6 +86,31 @@ fn app() -> html {
         audio.set_loop(true);
         audio
     });
+
+    let onmouseup = Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
+        log::info!("mouseup");
+    });
+
+    use_effect_with_deps(
+        move |_| {
+            let window = web_sys::window().expect("Failed to get Window");
+
+            window
+                .add_event_listener_with_callback("mouseup", onmouseup.as_ref().unchecked_ref())
+                .expect("addEventListener failed");
+
+            move || {
+                let window = web_sys::window().expect("Failed to get Window");
+                window
+                    .remove_event_listener_with_callback(
+                        "mouseup",
+                        onmouseup.as_ref().unchecked_ref(),
+                    )
+                    .expect("addEventListener failed");
+            }
+        },
+        (),
+    );
 
     use_effect_with_deps(
         move |is_playing| {
