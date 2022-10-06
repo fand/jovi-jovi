@@ -87,9 +87,14 @@ fn app() -> html {
         audio
     });
 
-    let onmouseup = Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
-        log::info!("mouseup");
-    });
+    let onmouseup = {
+        let audio = audio.clone();
+        Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
+            log::info!("mouseup");
+            audio.pause().expect("failed to pause");
+            audio.set_current_time(0.0);
+        })
+    };
 
     use_effect_with_deps(
         move |_| {
@@ -116,11 +121,6 @@ fn app() -> html {
         move |is_playing| {
             if *is_playing {
                 audio.play().expect("failed to play");
-                // log::info!("isPlaying: true");
-            } else {
-                audio.pause().expect("failed to pause");
-                audio.set_current_time(0.0);
-                // log::info!("isPlaying: false");
             }
             || {}
         },
