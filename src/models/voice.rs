@@ -1,21 +1,29 @@
-#[derive(PartialEq, Clone)]
-pub enum Voice {
-    JoyDivision,
-    Joy,
-    Divi,
-    John,
+#[derive(Debug, Clone, PartialEq)]
+pub struct Voice {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub filename: &'static str,
 }
 
-impl Voice {
-    pub fn voices() -> Vec<Voice> {
-        vec![Voice::JoyDivision, Voice::Joy, Voice::Divi, Voice::John]
-    }
-    pub fn name(&self) -> String {
-        match self {
-            Voice::JoyDivision => "Joy Division".to_string(),
-            Voice::Joy => "Joy".to_string(),
-            Voice::Divi => "Divi".to_string(),
-            Voice::John => "John".to_string(),
-        }
-    }
-}
+pub const VOICES: [Voice; 4] = [
+    Voice {
+        id: "JoyDivision",
+        name: "Joy Division",
+        filename: "wav/joydivision.wav",
+    },
+    Voice {
+        id: "Joy",
+        name: "Joy",
+        filename: "wav/joy.wav",
+    },
+    Voice {
+        id: "Divi",
+        name: "Divi",
+        filename: "wav/divi.wav",
+    },
+    Voice {
+        id: "John",
+        name: "John",
+        filename: "wav/john.wav",
+    },
+];
