@@ -14,6 +14,15 @@
         box-sizing: border-box;
         font-family: sans-serif;
       }
+
+      .app {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
       header {
         display: flex;
         justify-content: space-between;
@@ -21,6 +30,7 @@
       }
       header h1 {
         margin: 0;
+        font-weight: normal;
       }
       header button {
         background: none;
@@ -28,6 +38,8 @@
         cursor: pointer;
       }
       .buttons {
+        flex: 1;
+
         display: flex;
         flex-direction: column;
         width: 100%;
@@ -36,14 +48,18 @@
         padding: 16px;
         gap: 16px;
         box-sizing: border-box;
+
+        user-select: none;
       }
       .buttons button {
         background: none;
         border: 1px solid white;
         flex: 1;
         cursor: pointer;
+        font-weight: normal;
+        font-size: 2rem;
       }
-      .buttons button:active {
+      .buttons button.playing {
         border: 1px solid red;
       }
     </style>

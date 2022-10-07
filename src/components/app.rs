@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use wasm_bindgen::{prelude::Closure, JsCast};
 use yew::prelude::*;
 
@@ -6,20 +8,32 @@ use crate::models::voice::VOICES;
 
 #[function_component(App)]
 pub fn app() -> html {
-    let is_playing = use_state(|| false);
+    let is_playing = use_state(|| VOICES.map(|_| false));
 
     let audio = use_ref(|| {
-        let audio = web_sys::HtmlAudioElement::new_with_src("wav/joy.wav").expect("failed to load");
-        audio.set_loop(true);
-        audio
+        VOICES.map(|v| {
+            let audio =
+                web_sys::HtmlAudioElement::new_with_src(v.filename).expect("failed to load");
+            audio.set_loop(true);
+            audio
+        })
     });
 
     let onmouseup = {
         let audio = audio.clone();
+        let is_playing = is_playing.clone();
         Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
-            log::info!("mouseup");
-            audio.pause().expect("failed to pause");
-            audio.set_current_time(0.0);
+            // log::info!("mouseup");
+
+            for i in 0..VOICES.len() {
+                let a = &audio[i];
+                a.pause().expect("failed to pause");
+                a.set_current_time(0.0);
+
+                let mut isp = *is_playing;
+                isp[i] = false;
+                is_playing.set(isp);
+            }
         })
     };
 
@@ -44,23 +58,27 @@ pub fn app() -> html {
         (),
     );
 
-    use_effect_with_deps(
-        move |is_playing| {
-            if *is_playing {
-                audio.play().expect("failed to play");
-            } else {
-                audio.pause().expect("failed to pause");
-                audio.set_current_time(0.0);
-            }
-            || {}
-        },
-        *is_playing,
-    );
+    let onchange = {
+        let audio = audio.clone();
+        let is_playing = is_playing.clone();
+        Callback::from(move |(i, playing): (usize, bool)| {
+            // log::info!("onchange {}", playing);
 
-    let onchange = Callback::from(move |(voice, playing)| is_playing.set(playing));
+            if playing {
+                audio[i].play().expect("failed to play");
+            } else {
+                audio[i].pause().expect("failed to pause");
+                audio[i].set_current_time(0.0);
+            }
+
+            let mut isp = *is_playing;
+            isp[i] = playing;
+            is_playing.set(isp);
+        })
+    };
 
     html! {
-        <>
+        <div class="app">
             <header>
                 <div>
                     <h1>{"JOVI JOVI"}</h1>
@@ -71,8 +89,8 @@ pub fn app() -> html {
                 </div>
             </header>
             <div class="buttons">
-                { VOICES.iter().map(|voice| html! { <Button voice={voice.clone()} onchange={onchange.clone()}/> }).collect::<Html>() }
+                { VOICES.iter().enumerate().map(|(i, voice)| html! { <Button voice={voice.clone()} onchange={onchange.clone()} is_playing={is_playing[i]}/> }).collect::<Html>() }
             </div>
-        </>
+        </div>
     }
 }
