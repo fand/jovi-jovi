@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use wasm_bindgen::{prelude::Closure, JsCast};
 use yew::prelude::*;
 
@@ -9,6 +7,7 @@ use crate::models::voice::VOICES;
 #[function_component(App)]
 pub fn app() -> html {
     let is_playing = use_state(|| VOICES.map(|_| false));
+    let is_loop_mode = use_state(|| true);
 
     let audio = use_ref(|| {
         VOICES.map(|v| {
@@ -23,12 +22,11 @@ pub fn app() -> html {
         let audio = audio.clone();
         let is_playing = is_playing.clone();
         Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
-            // log::info!("mouseup");
+            log::info!("mouseup");
 
             for i in 0..VOICES.len() {
                 let a = &audio[i];
-                a.pause().expect("failed to pause");
-                a.set_current_time(0.0);
+                a.set_loop(false);
 
                 let mut isp = *is_playing;
                 isp[i] = false;
@@ -42,7 +40,7 @@ pub fn app() -> html {
             let window = web_sys::window().expect("Failed to get Window");
 
             window
-                .add_event_listener_with_callback("pointerup", onmouseup.as_ref().unchecked_ref())
+                .add_event_listener_with_callback("mouseup", onmouseup.as_ref().unchecked_ref())
                 .expect("addEventListener failed");
 
             move || {
@@ -61,20 +59,30 @@ pub fn app() -> html {
     let onchange = {
         let audio = audio.clone();
         let is_playing = is_playing.clone();
-        Callback::from(move |(i, playing): (usize, bool)| {
-            // log::info!("onchange {}", playing);
+        let is_loop_mode = is_loop_mode.clone();
 
+        // log::info!(">> creating onchange {}", *is_loop_mode);
+
+        Callback::from(move |(i, playing): (usize, bool)| {
+            // log::info!(">> play {}", playing);
             if playing {
+                audio[i].set_current_time(0.0);
+                audio[i].set_loop(*is_loop_mode.to_owned());
                 audio[i].play().expect("failed to play");
             } else {
-                audio[i].pause().expect("failed to pause");
-                audio[i].set_current_time(0.0);
+                // audio[i].pause().expect("failed to pause");
+                audio[i].set_loop(false);
             }
 
             let mut isp = *is_playing;
             isp[i] = playing;
             is_playing.set(isp);
         })
+    };
+
+    let toggle_loop_mode = {
+        let is_loop_mode = is_loop_mode.clone();
+        Callback::from(move |_| is_loop_mode.set(!*is_loop_mode))
     };
 
     html! {
@@ -85,7 +93,11 @@ pub fn app() -> html {
                 </div>
                 <div>
                     <button>{"POLY"}</button>
-                    <button>{"LOOP"}</button>
+                    <button
+                        class={if *is_loop_mode {"enabled"} else {""}}
+                        onclick={toggle_loop_mode}>
+                        {"LOOP"}
+                    </button>
                 </div>
             </header>
             <div class="buttons">

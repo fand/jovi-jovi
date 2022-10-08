@@ -34,7 +34,7 @@ pub fn button(
                 let ontouchstart = {
                     let onchange = onchange.clone();
                     Closure::<dyn Fn(_)>::wrap(Box::new(move |e: web_sys::MouseEvent| {
-                        // log::info!("touchstart");
+                        log::info!("touchstart");
                         e.prevent_default();
                         onchange.emit((voice.index, true));
                     }))
@@ -43,7 +43,7 @@ pub fn button(
                 let ontouchend = {
                     let onchange = onchange.clone();
                     Closure::<dyn Fn(_)>::wrap(Box::new(move |e: web_sys::MouseEvent| {
-                        // log::info!("touchend");
+                        log::info!("touchend");
                         e.prevent_default();
                         onchange.emit((voice.index, false));
                     }))
@@ -87,7 +87,7 @@ pub fn button(
         let onchange = onchange.clone();
         let voice = voice.clone();
         Callback::from(move |e: web_sys::MouseEvent| {
-            log::info!("mousedown {:?}", e.target());
+            log::info!("mousedown");
             onchange.emit((voice.index, true));
         })
     };
