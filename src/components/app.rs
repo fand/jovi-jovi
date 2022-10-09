@@ -9,7 +9,7 @@ pub fn app() -> html {
     let is_playing = use_state(|| VOICES.map(|_| false));
     let is_loop_mode = use_state(|| true);
 
-    let audio = use_ref(|| {
+    let audios = use_ref(|| {
         VOICES.map(|v| {
             let audio =
                 web_sys::HtmlAudioElement::new_with_src(v.filename).expect("failed to load");
@@ -19,13 +19,13 @@ pub fn app() -> html {
     });
 
     let onmouseup = {
-        let audio = audio.clone();
+        let audios = audios.clone();
         let is_playing = is_playing.clone();
         Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
             log::info!("mouseup");
 
             for i in 0..VOICES.len() {
-                let a = &audio[i];
+                let a = &audios[i];
                 a.set_loop(false);
 
                 let mut isp = *is_playing;
@@ -57,7 +57,7 @@ pub fn app() -> html {
     );
 
     let onchange = {
-        let audio = audio.clone();
+        let audios = audios.clone();
         let is_playing = is_playing.clone();
         let is_loop_mode = is_loop_mode.clone();
 
@@ -66,12 +66,12 @@ pub fn app() -> html {
         Callback::from(move |(i, playing): (usize, bool)| {
             // log::info!(">> play {}", playing);
             if playing {
-                audio[i].set_current_time(0.0);
-                audio[i].set_loop(*is_loop_mode.to_owned());
-                audio[i].play().expect("failed to play");
+                audios[i].set_current_time(0.0);
+                audios[i].set_loop(*is_loop_mode.to_owned());
+                audios[i].play().expect("failed to play");
             } else {
-                // audio[i].pause().expect("failed to pause");
-                audio[i].set_loop(false);
+                // audios[i].pause().expect("failed to pause");
+                audios[i].set_loop(false);
             }
 
             let mut isp = *is_playing;
