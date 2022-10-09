@@ -7,7 +7,7 @@ pub struct Voice {
     pub is_playing: bool,
 }
 
-pub const VOICES: [Voice; 4] = [
+pub const VOICES: [Voice; 6] = [
     Voice {
         index: 0,
         id: "JoyDivision",
@@ -34,6 +34,20 @@ pub const VOICES: [Voice; 4] = [
         id: "John",
         name: "JOHN",
         filename: "wav/john.wav",
+        is_playing: false,
+    },
+    Voice {
+        index: 4,
+        id: "Bon",
+        name: "BON",
+        filename: "wav/bon.wav",
+        is_playing: false,
+    },
+    Voice {
+        index: 5,
+        id: "Jovi",
+        name: "JOVI",
+        filename: "wav/jovi.wav",
         is_playing: false,
     },
 ];
