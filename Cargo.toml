@@ -23,5 +23,7 @@ features = [
   'AnalyserNode',
   'GainNode',
   'HtmlAudioElement',
-  'MediaElementAudioSourceNode'
+  'HtmlCanvasElement',
+  'MediaElementAudioSourceNode',
+  'CanvasRenderingContext2d',
 ]
