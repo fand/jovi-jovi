@@ -169,6 +169,7 @@ name = "jovijovi"
 version = "0.1.0"
 dependencies = [
  "gloo-utils",
+ "js-sys",
  "log",
  "wasm-bindgen",
  "wasm-bindgen-futures",

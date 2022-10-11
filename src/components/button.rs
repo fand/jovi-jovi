@@ -86,7 +86,7 @@ pub fn button(
     let onmousedown = {
         let onchange = onchange.clone();
         let voice = voice.clone();
-        Callback::from(move |e: web_sys::MouseEvent| {
+        Callback::from(move |_: web_sys::MouseEvent| {
             log::info!("mousedown");
             onchange.emit((voice.index, true));
         })

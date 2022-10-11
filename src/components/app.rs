@@ -1,13 +1,20 @@
 use std::f64::consts::PI;
-
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::Closure, JsCast};
+use wasm_bindgen_futures::{spawn_local, JsFuture};
 use yew::prelude::*;
 
 use crate::components::button::Button;
 use crate::models::voice::VOICES;
 
-const DIM: f64 = 1024.0;
+const DIM: u32 = 1024;
+const DIM_F64: f64 = DIM as f64;
+const FFT_SIZE: usize = (DIM / 2) as usize;
+
+async fn then<F: Fn(JsValue) -> ()>(p: js_sys::Promise, f: F) -> () {
+    let x = JsFuture::from(p).await.unwrap();
+    f(x);
+}
 
 #[function_component(App)]
 pub fn app() -> html {
@@ -25,8 +32,8 @@ pub fn app() -> html {
                     canvas_ref
                         .cast::<web_sys::HtmlCanvasElement>()
                         .map(|canvas| {
-                            canvas.set_width(1024);
-                            canvas.set_height(1024);
+                            canvas.set_width(DIM);
+                            canvas.set_height(DIM);
 
                             canvas
                                 .get_context("2d")
@@ -49,14 +56,14 @@ pub fn app() -> html {
         analyzer
             .connect_with_audio_node(&audio_ctx.destination())
             .unwrap();
-        analyzer.set_fft_size(512);
+        analyzer.set_fft_size(FFT_SIZE as u32);
 
         {
             let analyzer = analyzer.clone();
 
             let mut i = 0;
             let cb = Closure::<dyn FnMut(_)>::new(move |_: i32| {
-                let mut arr: [f32; 512] = [0.0; 512];
+                let mut arr: [f32; FFT_SIZE] = [0.0; FFT_SIZE];
                 analyzer.get_float_time_domain_data(&mut arr);
 
                 if let Some(canvas_ctx) = &*canvas_ctx.borrow_mut() {
@@ -64,13 +71,13 @@ pub fn app() -> html {
 
                     // Params
                     let shift = -8.0;
-                    let y_offset = 1024.0 * 0.8;
-                    let amp = 512.0 * 0.4;
+                    let y_offset = DIM_F64 * 0.8;
+                    let amp = DIM_F64 / 2.0 * 0.4;
 
                     // Feedback
                     canvas_ctx.set_fill_style(&JsValue::from_str("rgba(0, 0, 0, 0.015)"));
-                    canvas_ctx.fill_rect(0.0, 0.0, 1024.0, 1024.0);
-                    canvas_ctx.draw_image_with_html_canvas_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(&canvas, 0.0, 0.0, 1024.0, 1024.0 - shift, 0.0, shift, 1024.0, 1024.0 - shift).unwrap();
+                    canvas_ctx.fill_rect(0.0, 0.0, DIM_F64, DIM_F64);
+                    canvas_ctx.draw_image_with_html_canvas_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(&canvas, 0.0, 0.0, DIM_F64, DIM_F64 - shift, 0.0, shift, DIM_F64, DIM_F64 - shift).unwrap();
 
                     // Draw wave
                     if i % 2 == 0 {
@@ -88,7 +95,7 @@ pub fn app() -> html {
                                 .line_to((i * 2) as f64, -x.abs() as f64 * amp * wave + y_offset);
                             volume += x * x;
                         }
-                        canvas_ctx.move_to(1024.0, y_offset);
+                        canvas_ctx.move_to(DIM_F64, y_offset);
                         canvas_ctx.close_path();
 
                         if volume > 0.2 {
@@ -124,7 +131,7 @@ pub fn app() -> html {
             // source.connect(analyser);
             // analyser.connect(context.destination);
             let src = audio_ctx.create_media_element_source(&audio).unwrap();
-            src.connect_with_audio_node(&*analyzer);
+            src.connect_with_audio_node(&*analyzer).unwrap();
 
             audio
         })
@@ -180,7 +187,12 @@ pub fn app() -> html {
             if playing {
                 audios[i].set_current_time(0.0);
                 audios[i].set_loop(*is_loop_mode.to_owned());
-                audios[i].play().expect("failed to play");
+
+                let a = audios[i].play().expect("failed to play");
+
+                spawn_local(then(a, |x| {
+                    log::info!("resolved: {:?}", x);
+                }))
             } else {
                 // audios[i].pause().expect("failed to pause");
                 audios[i].set_loop(false);
