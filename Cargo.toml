@@ -22,5 +22,6 @@ features = [
   'AudioParam',
   'AnalyserNode',
   'GainNode',
-  'HtmlAudioElement'
+  'HtmlAudioElement',
+  'MediaElementAudioSourceNode'
 ]

@@ -8,12 +8,51 @@ use crate::models::voice::VOICES;
 pub fn app() -> html {
     let is_playing = use_state(|| VOICES.map(|_| false));
     let is_loop_mode = use_state(|| true);
+    let canvas_ref = use_node_ref();
+
+    let ctx = use_ref(|| web_sys::AudioContext::new().expect("failed to create AudioContext"));
+    let analyzer = use_ref(|| {
+        let analyzer = ctx.create_analyser().unwrap();
+        analyzer.connect_with_audio_node(&ctx.destination());
+        analyzer.set_fft_size(512);
+
+        {
+            log::debug!(">> gonna setInterval");
+            let analyzer = analyzer.clone();
+
+            let cb = Closure::<dyn Fn()>::new(move || {
+                let mut arr: [f32; 512] = [0.0; 512];
+                analyzer.get_float_time_domain_data(&mut arr);
+
+                log::info!("{:?}", &arr[0..10]);
+            });
+
+            web_sys::window()
+                .unwrap()
+                .set_interval_with_callback_and_timeout_and_arguments_0(
+                    cb.as_ref().unchecked_ref(),
+                    100,
+                )
+                .unwrap();
+
+            cb.forget();
+        }
+
+        analyzer
+    });
 
     let audios = use_ref(|| {
         VOICES.map(|v| {
             let audio =
                 web_sys::HtmlAudioElement::new_with_src(v.filename).expect("failed to load");
             audio.set_loop(true);
+
+            // var source = context.createMediaElementSource(audio);
+            // source.connect(analyser);
+            // analyser.connect(context.destination);
+            let src = ctx.create_media_element_source(&audio).unwrap();
+            src.connect_with_audio_node(&*analyzer);
+
             audio
         })
     });
@@ -103,6 +142,8 @@ pub fn app() -> html {
             <div class="buttons">
                 { VOICES.iter().enumerate().map(|(i, voice)| html! { <Button voice={voice.clone()} onchange={onchange.clone()} is_playing={is_playing[i]}/> }).collect::<Html>() }
             </div>
+
+            <canvas ref={canvas_ref}/>
         </div>
     }
 }
