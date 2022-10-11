@@ -60,15 +60,26 @@
         cursor: pointer;
         font-weight: normal;
         font-size: 2rem;
+        text-shadow: 0 0 3px black, 0 0 5px black, 0 0 10px black,
+          0 0 20px black;
       }
       .buttons button.playing {
         border: 1px solid red;
+      }
+
+      canvas {
+        position: fixed;
+        z-index: -1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
       }
     </style>
     
     <meta name="viewport" content="width=device-width, user-scalable=no">
   
-<link rel="preload" href="/jovi-jovi/jovijovi-e5ad7f6cc4bf1359_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
-<link rel="modulepreload" href="/jovi-jovi/jovijovi-e5ad7f6cc4bf1359.js"></head>
+<link rel="preload" href="/jovi-jovi/jovijovi-8f84763dab9901ce_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="/jovi-jovi/jovijovi-8f84763dab9901ce.js"></head>
 <body>
-<script type="module">import init from '/jovi-jovi/jovijovi-e5ad7f6cc4bf1359.js';init('/jovi-jovi/jovijovi-e5ad7f6cc4bf1359_bg.wasm');</script></body></html>
+<script type="module">import init from '/jovi-jovi/jovijovi-8f84763dab9901ce.js';init('/jovi-jovi/jovijovi-8f84763dab9901ce_bg.wasm');</script></body></html>
