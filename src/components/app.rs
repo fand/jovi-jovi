@@ -207,6 +207,8 @@ pub fn app() -> html {
         let audios = audios.clone();
 
         Callback::from(move |e: web_sys::Event| {
+            log::debug!("{:?}", e.dyn_ref::<web_sys::InputEvent>());
+
             let target = e.target().unwrap();
             let input = target.dyn_ref::<HtmlInputElement>().unwrap();
             if let Ok(v) = input.value().parse::<u32>() {
