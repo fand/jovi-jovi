@@ -20,7 +20,6 @@ async fn then<F: Fn(JsValue) -> ()>(p: js_sys::Promise, f: F) -> () {
 #[function_component(App)]
 pub fn app() -> html {
     let is_playing = use_state(|| VOICES.map(|_| false));
-    let is_loop_mode = use_state(|| true);
 
     // Setup canvas
     let canvas_ref = use_node_ref();
@@ -179,13 +178,11 @@ pub fn app() -> html {
     let onchange = {
         let audios = audios.clone();
         let is_playing = is_playing.clone();
-        let is_loop_mode = is_loop_mode.clone();
 
         Callback::from(move |(i, playing): (usize, bool)| {
-            // log::info!(">> play {}", playing);
             if playing {
                 audios[i].set_current_time(0.0);
-                audios[i].set_loop(*is_loop_mode.to_owned());
+                audios[i].set_loop(true);
 
                 let a = audios[i].play().expect("failed to play");
 
@@ -200,11 +197,6 @@ pub fn app() -> html {
             isp[i] = playing;
             is_playing.set(isp);
         })
-    };
-
-    let toggle_loop_mode = {
-        let is_loop_mode = is_loop_mode.clone();
-        Callback::from(move |_| is_loop_mode.set(!*is_loop_mode))
     };
 
     // Setup BPM input
@@ -239,14 +231,9 @@ pub fn app() -> html {
                 <div>
                     <h1>{"JOVI JOVI"}</h1>
                 </div>
-                <div>
+                <div class="bpm">
                     <label>{"BPM"}</label>
                     <input type="number" step="1" value={bpm.to_string()} onchange={onchange_bpm.clone()} />
-                    <button
-                        class={if *is_loop_mode {"enabled"} else {""}}
-                        onclick={toggle_loop_mode}>
-                        {"LOOP"}
-                    </button>
                 </div>
             </header>
             <div class="buttons">

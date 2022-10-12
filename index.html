@@ -28,6 +28,12 @@
         justify-content: space-between;
         margin: 16px;
       }
+      header .bpm {
+        display: flex;
+        align-items: center;
+        font-size: 1.2em;
+        gap: 8px;
+      }
       header h1 {
         margin: 0;
         font-weight: normal;
@@ -41,6 +47,17 @@
       header button.enabled {
         color: white;
       }
+      input {
+        background: black;
+        outline: none;
+        border: none;
+        width: 2.2em;
+        font-size: 1em;
+        padding: 2px 0;
+        text-align: center;
+        border-bottom: 1px solid grey;
+      }
+
       .buttons {
         flex: 1;
 
@@ -67,16 +84,6 @@
       .buttons button.playing {
         border: 1px solid red;
         color: red;
-      }
-      input {
-        background: black;
-        outline: none;
-        border: none;
-        width: 3em;
-        font-size: 1em;
-        padding: 0;
-        text-align: center;
-        border-bottom: 1px solid grey;
       }
 
       canvas {
