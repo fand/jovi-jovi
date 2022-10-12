@@ -2,6 +2,7 @@ use std::f64::consts::PI;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::Closure, JsCast};
 use wasm_bindgen_futures::{spawn_local, JsFuture};
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use crate::components::button::Button;
@@ -206,6 +207,32 @@ pub fn app() -> html {
         Callback::from(move |_| is_loop_mode.set(!*is_loop_mode))
     };
 
+    // Setup BPM input
+    let bpm = use_state(|| 120);
+    let bpm_last = use_state(|| 120);
+    let onchange_bpm = {
+        let bpm = bpm.clone();
+        let audios = audios.clone();
+
+        Callback::from(move |e: web_sys::Event| {
+            let target = e.target().unwrap();
+            let input = target.dyn_ref::<HtmlInputElement>().unwrap();
+            if let Ok(v) = input.value().parse::<u32>() {
+                let v = v.clamp(60, 240);
+                bpm.set(v);
+                bpm_last.set(v);
+
+                let speed = v as f64 / 120.0;
+                for a in audios.iter() {
+                    a.set_playback_rate(speed);
+                }
+            } else {
+                log::debug!("PARSE ERRRO");
+                bpm.set(*bpm_last);
+            }
+        })
+    };
+
     html! {
         <div class="app">
             <header>
@@ -213,7 +240,8 @@ pub fn app() -> html {
                     <h1>{"JOVI JOVI"}</h1>
                 </div>
                 <div>
-                    <button>{"POLY"}</button>
+                    <label>{"BPM"}</label>
+                    <input type="number" step="1" value={bpm.to_string()} onchange={onchange_bpm.clone()} />
                     <button
                         class={if *is_loop_mode {"enabled"} else {""}}
                         onclick={toggle_loop_mode}>
