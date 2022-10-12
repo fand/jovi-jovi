@@ -33,42 +33,62 @@
         justify-content: space-between;
         margin: var(--margin);
         margin-bottom: 0;
-      }
-      header .bpm {
-        display: flex;
-        align-items: center;
-        font-size: 1.1em;
-        gap: var(--margin-s);
+        height: 2em;
+        gap: 8px;
       }
       header h1 {
         margin: 0;
         font-weight: normal;
       }
-      header button {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: grey;
+      .bpm {
+        display: flex;
+        align-items: center;
+        font-size: 1em;
+        gap: 8px;
+        flex: 1;
+        justify-content: end;
+        z-index: 2;
       }
-      header button.enabled {
+      .bpm_button {
+        background: none;
         color: white;
-      }
-      .bpm > input {
-        background: none;
-        outline: none;
-        border: none;
-        -moz-appearance: textfield;
-
+        font-size: 1em;
         width: 3em;
         font-size: 1em;
         padding: 2px 0;
         text-align: center;
+        cursor: pointer;
+        border: none;
         border-bottom: 1px solid grey;
       }
-      .bpm > input::-webkit-inner-spin-button,
-      .bpm > input::-webkit-outer-spin-button {
+      .bpm_slider {
         -webkit-appearance: none;
-        margin: 0;
+        height: 2px;
+        flex: 1;
+      }
+      .bpm_slider:focus {
+        box-shadow: 0 0 3px rgb(0, 161, 255);
+      }
+      /* // -webkit-向けのつまみ */
+      .bpm_slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        background: red;
+        width: 8px;
+        height: 1.6em;
+        box-shadow: 0px 3px 6px 0px rgba(0, 0, 0, 0.15);
+      }
+      .bpm_slider::-moz-range-thumb {
+        background: red;
+        width: 8px;
+        height: 1.6em;
+        box-shadow: 0px 3px 6px 0px rgba(0, 0, 0, 0.15);
+        border: none;
+      }
+      .bpm_slider::-moz-focus-outer {
+        border: 0;
+      }
+      .bpm_slider:active::-webkit-slider-thumb {
+        box-shadow: 0px 5px 10px -2px rgba(0, 0, 0, 0.3);
       }
 
       .buttons {

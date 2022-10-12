@@ -20,6 +20,8 @@ async fn then<F: Fn(JsValue) -> ()>(p: js_sys::Promise, f: F) -> () {
 #[function_component(App)]
 pub fn app() -> html {
     let is_playing = use_state(|| VOICES.map(|_| false));
+    let bpm = use_state(|| 120);
+    let is_changing_bpm = use_state(|| false);
 
     // Setup canvas
     let canvas_ref = use_node_ref();
@@ -178,6 +180,7 @@ pub fn app() -> html {
     let onchange = {
         let audios = audios.clone();
         let is_playing = is_playing.clone();
+        let is_changing_bpm = is_changing_bpm.clone();
 
         Callback::from(move |(i, playing): (usize, bool)| {
             if playing {
@@ -196,33 +199,33 @@ pub fn app() -> html {
             let mut isp = *is_playing;
             isp[i] = playing;
             is_playing.set(isp);
+
+            is_changing_bpm.set(false);
         })
     };
 
     // Setup BPM input
-    let bpm = use_state(|| 120);
-    let bpm_last = use_state(|| 120);
+    let toggle_bpm_slider = {
+        let is_changing_bpm = is_changing_bpm.clone();
+        Callback::from(move |_| is_changing_bpm.set(!*is_changing_bpm))
+    };
+
     let onchange_bpm = {
         let bpm = bpm.clone();
         let audios = audios.clone();
 
-        Callback::from(move |e: web_sys::Event| {
-            log::debug!("{:?}", e.dyn_ref::<web_sys::InputEvent>());
-
+        Callback::from(move |e: web_sys::InputEvent| {
             let target = e.target().unwrap();
             let input = target.dyn_ref::<HtmlInputElement>().unwrap();
+
             if let Ok(v) = input.value().parse::<u32>() {
                 let v = v.clamp(60, 240);
                 bpm.set(v);
-                bpm_last.set(v);
 
                 let speed = v as f64 / 120.0;
                 for a in audios.iter() {
                     a.set_playback_rate(speed);
                 }
-            } else {
-                log::debug!("PARSE ERRRO");
-                bpm.set(*bpm_last);
             }
         })
     };
@@ -230,12 +233,17 @@ pub fn app() -> html {
     html! {
         <div class="app">
             <header>
-                <div>
+                {if *is_changing_bpm {html!{}} else {html!{
                     <h1>{"JOVI JOVI"}</h1>
-                </div>
+                }}}
                 <div class="bpm">
                     <label>{"BPM"}</label>
-                    <input type="number" step="1" value={bpm.to_string()} onchange={onchange_bpm.clone()} />
+                    {if *is_changing_bpm {
+                        html!{
+                            <input class="bpm_slider" type="range" step="1" min="60" max="240" value={bpm.to_string()} oninput={onchange_bpm.clone()} />
+                        }
+                    } else { html!{} }}
+                    <button class="bpm_button" type="button" onclick={toggle_bpm_slider.clone()}>{bpm.to_string()}</button>
                 </div>
             </header>
             <div class="buttons">
