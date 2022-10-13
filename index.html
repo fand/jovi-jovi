@@ -68,6 +68,18 @@
         height: 2em;
         gap: 8px;
       }
+      header .title {
+        position: absolute;
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        opacity: 1;
+        transition: all 0.1s ease;
+      }
+      header .title.hidden {
+        width: 0;
+        opacity: 0;
+      }
       header h1 {
         margin: 0;
         font-weight: normal;
@@ -94,12 +106,12 @@
         border-bottom: 1px solid grey;
       }
       .bpm_slider_wrapper {
-        flex: 1;
         width: 0;
         overflow: hidden;
-        transition: width 0.5s;
+        transition: all 0.2s ease;
       }
       .bpm_slider_wrapper.visible {
+        flex: 1;
         width: 100%;
       }
       .bpm_slider {

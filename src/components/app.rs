@@ -259,9 +259,9 @@ pub fn app() -> html {
                 </div>
             }} else { html!{} }}
             <header>
-                {if *is_changing_bpm {html!{}} else {html!{
+                <div class={if *is_changing_bpm {"title hidden"} else {"title"}}>
                     <h1>{"JOVI JOVI"}</h1>
-                }}}
+                </div>
                 <div class="bpm">
                     <label>{"BPM"}</label>
                     <div class={if *is_changing_bpm {"bpm_slider_wrapper visible"} else { "bpm_slider_wrapper" }}>
