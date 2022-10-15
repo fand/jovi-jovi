@@ -125,6 +125,7 @@ pub fn init() -> html {
     let audio_nodes = use_mut_ref(|| VOICES.map(|_| None));
     let audio_ctx_ref = use_mut_ref(|| None);
     let analyzer_ref = use_mut_ref(|| None);
+    let speed = use_mut_ref(|| 1.0 as f64);
 
     // Setup loading mask
     let is_loading = use_state(|| true);
@@ -189,6 +190,7 @@ pub fn init() -> html {
         let analyzer_ref = analyzer_ref.clone();
         let audio_bufs = audio_bufs.clone();
         let audio_nodes = audio_nodes.clone();
+        let speed = speed.clone();
 
         Callback::from(move |i: usize| {
             let audio_ctx = audio_ctx_ref.borrow_mut();
@@ -202,8 +204,11 @@ pub fn init() -> html {
                 let node = audio_ctx.create_buffer_source().unwrap();
                 node.set_buffer(Some(&buf));
                 node.set_loop(true);
-                node.connect_with_audio_node(&*analyzer);
-                node.start();
+
+                // log::debug!(">> play! {}", *speed);
+                node.playback_rate().set_value(*speed.borrow() as f32);
+                node.connect_with_audio_node(&*analyzer).unwrap();
+                node.start().unwrap();
 
                 (*nodes)[i] = Some(node);
             }
@@ -223,11 +228,8 @@ pub fn init() -> html {
 
     let set_speed = {
         log::info!("");
-        Callback::from(move |speed: f64| {
-            log::info!("set_speed");
-            // for a in audios.iter() {
-            //     a.set_playback_rate(speed);
-            // }
+        Callback::from(move |s: f64| {
+            *speed.borrow_mut() = s;
         })
     };
 
