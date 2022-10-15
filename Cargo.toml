@@ -30,4 +30,5 @@ features = [
   'HtmlCanvasElement',
   'MediaElementAudioSourceNode',
   'CanvasRenderingContext2d',
+  'ImageData',
 ]

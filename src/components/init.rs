@@ -44,19 +44,10 @@ fn setup_canvas(canvas_ctx: CanvasRenderingContext2d, analyzer: Box<AnalyserNode
         // Feedback
         canvas_ctx.set_fill_style(&JsValue::from_str("rgba(0, 0, 0, 0.015)"));
         canvas_ctx.fill_rect(0.0, 0.0, DIM_F64, DIM_F64);
-        canvas_ctx
-            .draw_image_with_html_canvas_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-                &canvas,
-                0.0,
-                0.0,
-                DIM_F64,
-                DIM_F64 - shift,
-                0.0,
-                shift,
-                DIM_F64,
-                DIM_F64 - shift,
-            )
+        let prev = canvas_ctx
+            .get_image_data(0.0, 0.0, DIM_F64, DIM_F64)
             .unwrap();
+        canvas_ctx.put_image_data(&prev, 0.0, shift).unwrap();
 
         // Draw wave
         if i % 2 == 0 {
