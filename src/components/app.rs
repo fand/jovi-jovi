@@ -1,6 +1,4 @@
-use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::Closure, JsCast};
-use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::{CanvasRenderingContext2d, HtmlInputElement};
 use yew::prelude::*;
 
@@ -10,39 +8,39 @@ use crate::models::voice::VOICES;
 const MIN_BPM: u32 = 60;
 const MAX_BPM: u32 = 180;
 
-async fn then<F: Fn(JsValue) -> ()>(p: js_sys::Promise, f: F) -> () {
-    let x = JsFuture::from(p).await.unwrap();
-    f(x);
-}
-
 #[derive(Properties, PartialEq)]
 pub struct AppProps {
-    pub canvas_ctx: CanvasRenderingContext2d,
+    // pub canvas_ctx: CanvasRenderingContext2d,
+    pub play: Callback<usize>,
+    pub pause: Callback<usize>,
+    pub set_speed: Callback<f64>,
 }
 
 #[function_component(App)]
-pub fn app(AppProps { canvas_ctx }: &AppProps) -> html {
-    log::debug!(">> App.render: {:?}", canvas_ctx);
+pub fn app(
+    AppProps {
+        // canvas_ctx,
+        play,
+        pause,
+        set_speed,
+    }: &AppProps,
+) -> html {
+    // log::debug!(">> App.render: {:?}", canvas_ctx);
 
     let is_playing = use_state(|| VOICES.map(|_| false));
     let bpm = use_state(|| 120);
     let is_changing_bpm = use_state(|| false);
 
-    // Load audio files and connect them to the analyzer
-    let audios = use_ref(|| {
-        VOICES.map(|v| web_sys::HtmlAudioElement::new_with_src(v.filename).expect("failed to load"))
-    });
-
     // Register mouse up handler
     let onmouseup = {
-        let audios = audios.clone();
+        let pause = pause.clone();
         let is_playing = is_playing.clone();
+
         Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
             log::info!("mouseup");
 
             for i in 0..VOICES.len() {
-                let a = &audios[i];
-                a.set_loop(false);
+                pause.emit(i);
 
                 let mut isp = *is_playing;
                 isp[i] = false;
@@ -72,22 +70,17 @@ pub fn app(AppProps { canvas_ctx }: &AppProps) -> html {
     );
 
     let onchange = {
-        let audios = audios.clone();
         let is_playing = is_playing.clone();
         let is_changing_bpm = is_changing_bpm.clone();
 
+        let play = play.clone();
+        let pause = pause.clone();
+
         Callback::from(move |(i, playing): (usize, bool)| {
             if playing {
-                audios[i].set_current_time(0.0);
-                audios[i].set_loop(true);
-
-                let a = audios[i].play().expect("failed to play");
-
-                spawn_local(then(a, |x| {
-                    log::info!("resolved: {:?}", x);
-                }))
+                play.emit(i);
             } else {
-                audios[i].set_loop(false);
+                pause.emit(i);
             }
 
             let mut isp = *is_playing;
@@ -106,7 +99,7 @@ pub fn app(AppProps { canvas_ctx }: &AppProps) -> html {
 
     let onchange_bpm = {
         let bpm = bpm.clone();
-        let audios = audios.clone();
+        let set_speed = set_speed.clone();
 
         Callback::from(move |e: web_sys::InputEvent| {
             let target = e.target().unwrap();
@@ -117,9 +110,7 @@ pub fn app(AppProps { canvas_ctx }: &AppProps) -> html {
                 bpm.set(v);
 
                 let speed = v as f64 / 120.0;
-                for a in audios.iter() {
-                    a.set_playback_rate(speed);
-                }
+                set_speed.emit(speed);
             }
         })
     };
