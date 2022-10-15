@@ -1,7 +1,8 @@
-use std::cell::RefCell;
+use gloo_net::http::Request;
 use std::f64::consts::PI;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::Closure, JsCast};
+use wasm_bindgen_futures::JsFuture;
 use web_sys::{AnalyserNode, CanvasRenderingContext2d};
 use yew::prelude::*;
 
@@ -27,12 +28,11 @@ fn get_canvas_context(canvas_ref: NodeRef) -> CanvasRenderingContext2d {
 }
 
 // Setup waveform analyzer
-fn setup_canvas(canvas_ctx: CanvasRenderingContext2d, analyzer: AnalyserNode) {
+fn setup_canvas(canvas_ctx: CanvasRenderingContext2d, analyzer: Box<AnalyserNode>) {
     let mut i = 0;
     let cb = Closure::<dyn FnMut(_)>::new(move |_: i32| {
         let mut arr: [f32; FFT_SIZE] = [0.0; FFT_SIZE];
         analyzer.get_float_time_domain_data(&mut arr);
-        log::debug!(">> analyzer {:?}", canvas_ctx);
 
         let canvas = canvas_ctx.canvas().unwrap();
 
@@ -97,18 +97,45 @@ pub fn init() -> html {
     // Setup canvas
     let canvas_ref = use_node_ref();
 
-    // Load audio files and connect them to the analyzer
-    let audios = use_ref(|| {
-        VOICES.map(|v| web_sys::HtmlAudioElement::new_with_src(v.filename).expect("failed to load"))
-    });
+    let audio_blobs = use_mut_ref(|| VOICES.map(|_| None));
+    {
+        let audio_blobs = audio_blobs.clone();
+        use_effect_with_deps(
+            move |_| {
+                let audio_blobs = audio_blobs.clone();
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    for i in 0..VOICES.len() {
+                        let v = &VOICES[i];
+                        let res = Request::get(v.filename).send().await.unwrap();
+
+                        let res = res.as_raw().array_buffer().unwrap();
+                        let res = JsFuture::from(res).await.unwrap();
+                        let res = res.dyn_into::<js_sys::ArrayBuffer>().unwrap();
+                        (*audio_blobs.borrow_mut())[i] = Some(res);
+                    }
+                });
+
+                || {}
+            },
+            (),
+        );
+    }
+    let audio_bufs = use_mut_ref(|| VOICES.map(|_| None));
+    let audio_nodes = use_mut_ref(|| VOICES.map(|_| None));
+    let audio_ctx_ref = use_mut_ref(|| None);
+    let analyzer_ref = use_mut_ref(|| None);
 
     // Setup loading mask
     let is_loading = use_state(|| true);
     let onclick_mask = {
         let is_loading = is_loading.clone();
-        let audios = audios.clone();
 
         let canvas_ref = canvas_ref.clone();
+
+        let audio_ctx_ref = audio_ctx_ref.clone();
+        let analyzer_ref = analyzer_ref.clone();
+        let audio_bufs = audio_bufs.clone();
 
         Callback::from(move |_| {
             is_loading.set(!*is_loading);
@@ -123,42 +150,84 @@ pub fn init() -> html {
                 .unwrap();
             analyzer.set_fft_size(FFT_SIZE as u32);
 
-            // Connect audio files to the analyzer
-            for audio in audios.iter() {
-                let src = audio_ctx.create_media_element_source(&audio).unwrap();
-                src.connect_with_audio_node(&*analyzer).unwrap();
+            // Decode audios and store them to audio_bufs
+            let audio_blobs = audio_blobs.clone();
+            let audio_bufs = audio_bufs.clone();
+            {
+                let audio_ctx = audio_ctx.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let audio_ctx = audio_ctx.clone();
+                    let blobs = audio_blobs.borrow_mut();
+                    let mut bufs = audio_bufs.borrow_mut();
+                    for i in 0..blobs.len() {
+                        let blob = &blobs[i];
+                        if let Some(data) = blob {
+                            let audio_buf = audio_ctx.decode_audio_data(data).unwrap();
+                            let audio_buf = JsFuture::from(audio_buf).await.unwrap();
+
+                            bufs[i] = Some(audio_buf.dyn_into::<web_sys::AudioBuffer>().unwrap());
+                        }
+                    }
+                });
             }
 
             log::debug!(">> click! {:?}", canvas_ref);
 
+            let analyzer = Box::new(analyzer);
+
             // Setup canvas loop
             let canvas_ctx = get_canvas_context(canvas_ref.clone());
-            setup_canvas(canvas_ctx, analyzer);
+            setup_canvas(canvas_ctx, analyzer.clone());
+
+            *audio_ctx_ref.borrow_mut() = Some(audio_ctx);
+            *analyzer_ref.borrow_mut() = Some(analyzer);
         })
     };
 
     let play = {
-        let audios = audios.clone();
+        let audio_ctx_ref = audio_ctx_ref.clone();
+        let analyzer_ref = analyzer_ref.clone();
+        let audio_bufs = audio_bufs.clone();
+        let audio_nodes = audio_nodes.clone();
+
         Callback::from(move |i: usize| {
-            audios[i].set_current_time(0.0);
-            audios[i].set_loop(true);
-            audios[i].play();
+            let audio_ctx = audio_ctx_ref.borrow_mut();
+            let analyzer = analyzer_ref.borrow_mut();
+            let bufs = audio_bufs.borrow_mut();
+            let mut nodes = audio_nodes.borrow_mut();
+
+            if let (Some(audio_ctx), Some(buf), Some(analyzer)) =
+                (&*audio_ctx, &bufs[i], &*analyzer)
+            {
+                let node = audio_ctx.create_buffer_source().unwrap();
+                node.set_buffer(Some(&buf));
+                node.set_loop(true);
+                node.connect_with_audio_node(&*analyzer);
+                node.start();
+
+                (*nodes)[i] = Some(node);
+            }
         })
     };
 
     let pause = {
-        let audios = audios.clone();
+        let audio_nodes = audio_nodes.clone();
+
         Callback::from(move |i: usize| {
-            audios[i].set_loop(false);
+            let nodes = audio_nodes.borrow_mut();
+            if let Some(node) = &nodes[i] {
+                node.set_loop(false);
+            }
         })
     };
 
     let set_speed = {
-        let audios = audios.clone();
+        log::info!("");
         Callback::from(move |speed: f64| {
-            for a in audios.iter() {
-                a.set_playback_rate(speed);
-            }
+            log::info!("set_speed");
+            // for a in audios.iter() {
+            //     a.set_playback_rate(speed);
+            // }
         })
     };
 
