@@ -1,16 +1,16 @@
 use wasm_bindgen::{prelude::Closure, JsCast};
-use web_sys::{CanvasRenderingContext2d, HtmlInputElement};
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use crate::components::button::Button;
 use crate::models::voice::VOICES;
+use crate::utils::{window_add_event_listener, window_remove_event_listener};
 
 const MIN_BPM: u32 = 60;
 const MAX_BPM: u32 = 180;
 
 #[derive(Properties, PartialEq)]
 pub struct AppProps {
-    // pub canvas_ctx: CanvasRenderingContext2d,
     pub play: Callback<usize>,
     pub pause: Callback<usize>,
     pub set_speed: Callback<f64>,
@@ -19,14 +19,11 @@ pub struct AppProps {
 #[function_component(App)]
 pub fn app(
     AppProps {
-        // canvas_ctx,
         play,
         pause,
         set_speed,
     }: &AppProps,
 ) -> html {
-    // log::debug!(">> App.render: {:?}", canvas_ctx);
-
     let is_playing = use_state(|| VOICES.map(|_| false));
     let bpm = use_state(|| 120);
     let is_changing_bpm = use_state(|| false);
@@ -50,20 +47,9 @@ pub fn app(
     };
     use_effect_with_deps(
         move |_| {
-            let window = web_sys::window().expect("Failed to get Window");
-
-            window
-                .add_event_listener_with_callback("mouseup", onmouseup.as_ref().unchecked_ref())
-                .expect("addEventListener failed");
-
+            window_add_event_listener("mouseup", &onmouseup);
             move || {
-                let window = web_sys::window().expect("Failed to get Window");
-                window
-                    .remove_event_listener_with_callback(
-                        "mouseup",
-                        onmouseup.as_ref().unchecked_ref(),
-                    )
-                    .expect("addEventListener failed");
+                window_remove_event_listener("mouseup", &onmouseup);
             }
         },
         (),

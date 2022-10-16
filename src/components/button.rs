@@ -1,6 +1,9 @@
-use crate::models::voice::Voice;
-use wasm_bindgen::{prelude::Closure, JsCast};
-use web_sys::{AddEventListenerOptions, HtmlElement};
+use crate::{
+    models::voice::Voice,
+    utils::{el_add_event_listener, el_remove_event_listener},
+};
+use wasm_bindgen::prelude::Closure;
+use web_sys::HtmlElement;
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
@@ -20,6 +23,7 @@ pub fn button(
 ) -> html {
     let button_ref = use_node_ref();
 
+    // Yew doesn't support touchstart/touchend, so we have to add event listeners manually
     {
         let button_ref = button_ref.clone();
         let voice = voice.clone();
@@ -49,34 +53,12 @@ pub fn button(
                     }))
                 };
 
-                button
-                    .add_event_listener_with_callback_and_add_event_listener_options(
-                        "touchstart",
-                        ontouchstart.as_ref().unchecked_ref(),
-                        AddEventListenerOptions::new().passive(false),
-                    )
-                    .expect("Failed to listen touchstart");
-                button
-                    .add_event_listener_with_callback_and_add_event_listener_options(
-                        "touchend",
-                        ontouchend.as_ref().unchecked_ref(),
-                        AddEventListenerOptions::new().passive(false),
-                    )
-                    .expect("Failed to listen touchend");
+                el_add_event_listener(&button, "touchstart", &ontouchstart);
+                el_add_event_listener(&button, "touchend", &ontouchend);
 
                 move || {
-                    button
-                        .remove_event_listener_with_callback(
-                            "touchstart",
-                            ontouchstart.as_ref().unchecked_ref(),
-                        )
-                        .expect("Failed to unlisten touchstart");
-                    button
-                        .remove_event_listener_with_callback(
-                            "touchend",
-                            ontouchend.as_ref().unchecked_ref(),
-                        )
-                        .expect("Failed to unlisten touchend");
+                    el_remove_event_listener(&button, "touchstart", &ontouchstart);
+                    el_remove_event_listener(&button, "touchend", &ontouchend);
                 }
             },
             button_ref,
@@ -93,13 +75,11 @@ pub fn button(
     };
 
     html! {
-        <>
-            <button type="button"
-                class={if *is_playing { "playing" } else { "" } }
-                ref={button_ref}
-                onmousedown={onmousedown}>
-                { voice.name }
-            </button>
-        </>
+        <button type="button"
+            class={if *is_playing { "playing" } else { "" } }
+            ref={button_ref}
+            onmousedown={onmousedown}>
+            { voice.name }
+        </button>
     }
 }

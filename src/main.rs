@@ -1,5 +1,6 @@
 mod components;
 mod models;
+mod utils;
 
 use components::init::Init;
 

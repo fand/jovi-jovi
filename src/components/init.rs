@@ -34,8 +34,6 @@ fn setup_canvas(canvas_ctx: CanvasRenderingContext2d, analyzer: Box<AnalyserNode
         let mut arr: [f32; FFT_SIZE] = [0.0; FFT_SIZE];
         analyzer.get_float_time_domain_data(&mut arr);
 
-        let canvas = canvas_ctx.canvas().unwrap();
-
         // Params
         let shift = -8.0;
         let y_offset = DIM_F64 * 0.8;
@@ -85,10 +83,16 @@ fn setup_canvas(canvas_ctx: CanvasRenderingContext2d, analyzer: Box<AnalyserNode
 
 #[function_component(Init)]
 pub fn init() -> html {
-    // Setup canvas
     let canvas_ref = use_node_ref();
 
     let audio_blobs = use_mut_ref(|| VOICES.map(|_| None));
+    let audio_bufs = use_mut_ref(|| VOICES.map(|_| None));
+    let audio_nodes = use_mut_ref(|| VOICES.map(|_| None));
+    let audio_ctx_ref = use_mut_ref(|| None);
+    let analyzer_ref = use_mut_ref(|| None);
+    let speed = use_mut_ref(|| 1.0 as f64);
+
+    // Load audio files
     {
         let audio_blobs = audio_blobs.clone();
         use_effect_with_deps(
@@ -112,11 +116,6 @@ pub fn init() -> html {
             (),
         );
     }
-    let audio_bufs = use_mut_ref(|| VOICES.map(|_| None));
-    let audio_nodes = use_mut_ref(|| VOICES.map(|_| None));
-    let audio_ctx_ref = use_mut_ref(|| None);
-    let analyzer_ref = use_mut_ref(|| None);
-    let speed = use_mut_ref(|| 1.0 as f64);
 
     // Setup loading mask
     let is_loading = use_state(|| true);
@@ -136,7 +135,7 @@ pub fn init() -> html {
             let audio_ctx = web_sys::AudioContext::new().expect("failed to create AudioContext");
 
             // Create AnalyserNode
-            let analyzer = audio_ctx.create_analyser().unwrap();
+            let analyzer = Box::new(audio_ctx.create_analyser().unwrap());
             analyzer
                 .connect_with_audio_node(&audio_ctx.destination())
                 .unwrap();
@@ -162,10 +161,6 @@ pub fn init() -> html {
                     }
                 });
             }
-
-            log::debug!(">> click! {:?}", canvas_ref);
-
-            let analyzer = Box::new(analyzer);
 
             // Setup canvas loop
             let canvas_ctx = get_canvas_context(canvas_ref.clone());
@@ -195,8 +190,6 @@ pub fn init() -> html {
                 let node = audio_ctx.create_buffer_source().unwrap();
                 node.set_buffer(Some(&buf));
                 node.set_loop(true);
-
-                // log::debug!(">> play! {}", *speed);
                 node.playback_rate().set_value(*speed.borrow() as f32);
                 node.connect_with_audio_node(&*analyzer).unwrap();
                 node.start().unwrap();
@@ -218,7 +211,6 @@ pub fn init() -> html {
     };
 
     let set_speed = {
-        log::info!("");
         Callback::from(move |s: f64| {
             *speed.borrow_mut() = s;
         })
