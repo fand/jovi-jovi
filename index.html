@@ -7,6 +7,22 @@
       :root {
         --margin: 16px;
         --gap: 16px;
+
+        --title-hidden-width: 1;
+        --title-hidden-opacity: 1;
+
+        --bpm-slider-flex: none;
+        --bpm-slider-width: 320px;
+      }
+
+      @media screen and (max-width: 640px) {
+        :root {
+          --title-hidden-width: 0;
+          --title-hidden-opacity: 0;
+
+          --bpm-slider-flex: 1;
+          --bpm-slider-width: 100%;
+        }
       }
 
       html,
@@ -61,6 +77,7 @@
       }
 
       header {
+        position: relative;
         display: flex;
         justify-content: space-between;
         margin: var(--margin);
@@ -77,8 +94,8 @@
         transition: all 0.1s ease;
       }
       header .title.hidden {
-        width: 0;
-        opacity: 0;
+        width: var(--title-hidden-width);
+        opacity: var(--title-hidden-opacity);
       }
       header h1 {
         margin: 0;
@@ -111,8 +128,8 @@
         transition: all 0.2s ease;
       }
       .bpm_slider_wrapper.visible {
-        flex: 1;
-        width: 100%;
+        flex: var(--bpm-slider-flex);
+        width: var(--bpm-slider-width);
       }
       .bpm_slider {
         -webkit-appearance: none;
