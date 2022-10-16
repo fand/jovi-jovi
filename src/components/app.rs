@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use wasm_bindgen::{prelude::Closure, JsCast};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -8,6 +10,40 @@ use crate::utils::{window_add_event_listener, window_remove_event_listener};
 
 const MIN_BPM: u32 = 60;
 const MAX_BPM: u32 = 180;
+
+enum AppAction {
+    Play(usize),
+    Pause(usize),
+}
+struct AppState {
+    is_playing: [bool; 6],
+}
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            is_playing: VOICES.map(|_| false),
+        }
+    }
+}
+impl Reducible for AppState {
+    type Action = AppAction;
+    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+        let next = match action {
+            AppAction::Play(i) => {
+                let mut a = self.is_playing.clone();
+                a[i] = true;
+                a
+            }
+            AppAction::Pause(i) => {
+                let mut a = self.is_playing.clone();
+                a[i] = false;
+                a
+            }
+        };
+
+        Self { is_playing: next }.into()
+    }
+}
 
 #[derive(Properties, PartialEq)]
 pub struct AppProps {
@@ -24,24 +60,22 @@ pub fn app(
         set_speed,
     }: &AppProps,
 ) -> html {
-    let is_playing = use_state(|| VOICES.map(|_| false));
+    let state = use_reducer(AppState::default);
+
     let bpm = use_state(|| 120);
     let is_changing_bpm = use_state(|| false);
 
     // Register mouse up handler
     let onmouseup = {
         let pause = pause.clone();
-        let is_playing = is_playing.clone();
+        let state = state.clone();
 
         Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
             log::info!("mouseup");
 
             for i in 0..VOICES.len() {
                 pause.emit(i);
-
-                let mut isp = *is_playing;
-                isp[i] = false;
-                is_playing.set(isp);
+                state.dispatch(AppAction::Pause(i));
             }
         })
     };
@@ -56,7 +90,7 @@ pub fn app(
     );
 
     let onchange = {
-        let is_playing = is_playing.clone();
+        let state = state.clone();
         let is_changing_bpm = is_changing_bpm.clone();
 
         let play = play.clone();
@@ -65,13 +99,11 @@ pub fn app(
         Callback::from(move |(i, playing): (usize, bool)| {
             if playing {
                 play.emit(i);
+                state.dispatch(AppAction::Play(i));
             } else {
                 pause.emit(i);
+                state.dispatch(AppAction::Pause(i));
             }
-
-            let mut isp = *is_playing;
-            isp[i] = playing;
-            is_playing.set(isp);
 
             is_changing_bpm.set(false);
         })
@@ -116,7 +148,7 @@ pub fn app(
                 </div>
             </header>
             <div class="buttons">
-                { VOICES.iter().enumerate().map(|(i, voice)| html! { <Button voice={voice.clone()} onchange={onchange.clone()} is_playing={is_playing[i]}/> }).collect::<Html>() }
+                { VOICES.iter().enumerate().map(|(i, voice)| html! { <Button voice={voice.clone()} onchange={onchange.clone()} is_playing={state.is_playing[i]}/> }).collect::<Html>() }
             </div>
         </>
     }
