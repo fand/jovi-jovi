@@ -6,9 +6,9 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::Closure, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    AnalyserNode, AudioBuffer, AudioBufferSourceNode, AudioContext, CanvasRenderingContext2d, Node,
+    AnalyserNode, AudioBuffer, AudioBufferSourceNode, AudioContext, CanvasRenderingContext2d,
 };
-use yew::{use_effect_with_deps, use_mut_ref, Callback, NodeRef};
+use yew::{use_effect_with_deps, use_mut_ref, use_state_eq, Callback, NodeRef};
 
 const DIM: u32 = 1024;
 const DIM_F64: f64 = DIM as f64;
@@ -96,6 +96,7 @@ pub struct AudioSampler {
     pub play: Callback<usize>,
     pub pause: Callback<usize>,
     pub set_speed: Callback<f64>,
+    pub is_loaded: bool,
 }
 
 pub fn use_audio_sampler() -> AudioSampler {
@@ -107,10 +108,12 @@ pub fn use_audio_sampler() -> AudioSampler {
         nodes: VOICES.map(|_| None).to_vec(),
         speed: 1.0,
     });
+    let is_loaded = use_state_eq(|| false);
 
     // Load audio files
     {
         let state = state.clone();
+        let is_loaded = is_loaded.clone();
         use_effect_with_deps(
             move |_| {
                 wasm_bindgen_futures::spawn_local(async move {
@@ -122,6 +125,9 @@ pub fn use_audio_sampler() -> AudioSampler {
                         let res = JsFuture::from(res).await.unwrap();
                         let res = res.dyn_into::<js_sys::ArrayBuffer>().unwrap();
                         (*state.borrow_mut()).blobs[i] = Some(res);
+
+                        // Upload progres
+                        is_loaded.set(state.borrow().blobs.iter().all(|x| x.is_some()));
                     }
                 });
                 || {}
@@ -219,5 +225,6 @@ pub fn use_audio_sampler() -> AudioSampler {
         play,
         pause,
         set_speed,
+        is_loaded: *is_loaded,
     }
 }

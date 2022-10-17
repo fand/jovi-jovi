@@ -75,6 +75,10 @@
         font-weight: normal;
         cursor: pointer;
       }
+      .mask button.loading {
+        border-bottom: 1px solid black;
+        cursor: auto;
+      }
 
       header {
         position: relative;
@@ -137,7 +141,6 @@
         width: 100%;
         vertical-align: middle;
       }
-      /* // -webkit-向けのつまみ */
       .bpm_slider::-webkit-slider-thumb {
         -webkit-appearance: none;
         background: red;
@@ -201,4 +204,12 @@
     <meta name="viewport" content="width=device-width, user-scalable=no" />
     <meta name="theme-color" content="black" />
   </head>
+  <body>
+    <div class="app">
+      <div class="mask">
+        <h1>JOVI JOVI</h1>
+        <button class="loading">Loading...</button>
+      </div>
+    </div>
+  </body>
 </html>
