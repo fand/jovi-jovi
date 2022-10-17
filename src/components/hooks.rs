@@ -127,7 +127,7 @@ pub fn use_audio_sampler() -> AudioSampler {
                         (*state.borrow_mut()).blobs[i] = Some(res);
 
                         // Upload progres
-                        is_loaded.set(state.borrow().blobs.iter().all(|x| x.is_some()));
+                        is_loaded.set(state.borrow_mut().blobs.iter().all(|x| x.is_some()));
                     }
                 });
                 || {}
@@ -185,6 +185,11 @@ pub fn use_audio_sampler() -> AudioSampler {
 
         Callback::from(move |i: usize| {
             let mut audio = state.borrow_mut();
+
+            if let Some(node) = &audio.nodes[i] {
+                node.stop();
+                node.disconnect();
+            }
 
             if let (Some(audio_ctx), Some(buf), Some(analyzer)) =
                 (&audio.ctx, &audio.bufs[i], &audio.analyzer)
