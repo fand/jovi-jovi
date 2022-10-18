@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use wasm_bindgen::{prelude::Closure, JsCast};
@@ -12,16 +13,17 @@ const MIN_BPM: u32 = 60;
 const MAX_BPM: u32 = 180;
 
 enum AppAction {
-    Play(usize),
-    Pause(usize),
+    Play(usize, usize),
+    Pause(usize, usize),
+    PauseAll,
 }
 struct AppState {
-    is_playing: [bool; 6],
+    is_playing: [HashSet<usize>; 6],
 }
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            is_playing: VOICES.map(|_| false),
+            is_playing: VOICES.map(|_| HashSet::new()),
         }
     }
 }
@@ -29,16 +31,17 @@ impl Reducible for AppState {
     type Action = AppAction;
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         let next = match action {
-            AppAction::Play(i) => {
+            AppAction::Play(i, id) => {
                 let mut a = self.is_playing.clone();
-                a[i] = true;
+                a[i].insert(id);
                 a
             }
-            AppAction::Pause(i) => {
+            AppAction::Pause(i, id) => {
                 let mut a = self.is_playing.clone();
-                a[i] = false;
+                a[i].remove(&id);
                 a
             }
+            AppAction::PauseAll => VOICES.map(|_| HashSet::new()),
         };
 
         Self { is_playing: next }.into()
@@ -47,8 +50,9 @@ impl Reducible for AppState {
 
 #[derive(Properties, PartialEq)]
 pub struct AppProps {
-    pub play: Callback<usize>,
-    pub pause: Callback<usize>,
+    pub play: Callback<(usize, usize)>,
+    pub pause: Callback<(usize, usize)>,
+    pub pause_all: Callback<()>,
     pub set_speed: Callback<f64>,
 }
 
@@ -57,6 +61,7 @@ pub fn app(
     AppProps {
         play,
         pause,
+        pause_all,
         set_speed,
     }: &AppProps,
 ) -> html {
@@ -67,16 +72,13 @@ pub fn app(
 
     // Register mouse up handler
     let onmouseup = {
-        let pause = pause.clone();
+        let pause_all = pause_all.clone();
         let state = state.clone();
 
         Closure::<dyn FnMut(_)>::new(move |_: web_sys::MouseEvent| {
             log::info!("mouseup");
-
-            for i in 0..VOICES.len() {
-                pause.emit(i);
-                state.dispatch(AppAction::Pause(i));
-            }
+            pause_all.emit(());
+            state.dispatch(AppAction::PauseAll);
         })
     };
     use_effect_with_deps(
@@ -96,13 +98,13 @@ pub fn app(
         let play = play.clone();
         let pause = pause.clone();
 
-        Callback::from(move |(i, playing): (usize, bool)| {
+        Callback::from(move |(i, count, playing): (usize, usize, bool)| {
             if playing {
-                play.emit(i);
-                state.dispatch(AppAction::Play(i));
+                play.emit((i, count));
+                state.dispatch(AppAction::Play(i, count));
             } else {
-                pause.emit(i);
-                state.dispatch(AppAction::Pause(i));
+                pause.emit((i, count));
+                state.dispatch(AppAction::Pause(i, count));
             }
 
             is_changing_bpm.set(false);
@@ -148,7 +150,7 @@ pub fn app(
                 </div>
             </header>
             <div class="buttons">
-                { VOICES.iter().enumerate().map(|(i, voice)| html! { <Button voice={voice.clone()} onchange={onchange.clone()} is_playing={state.is_playing[i]}/> }).collect::<Html>() }
+                { VOICES.iter().enumerate().map(|(i, voice)| html! { <Button voice={voice.clone()} onchange={onchange.clone()} is_playing={!state.is_playing[i].is_empty()}/> }).collect::<Html>() }
             </div>
         </>
     }

@@ -1,6 +1,7 @@
 use crate::models::voice::VOICES;
 use gloo_net::http::Request;
 use js_sys::ArrayBuffer;
+use std::collections::HashMap;
 use std::f64::consts::PI;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::Closure, JsCast};
@@ -85,7 +86,7 @@ fn setup_canvas(canvas_ctx: CanvasRenderingContext2d, analyzer: Box<AnalyserNode
 struct SamplerState {
     blobs: Vec<Option<ArrayBuffer>>,
     bufs: Vec<Option<AudioBuffer>>,
-    nodes: Vec<Option<AudioBufferSourceNode>>,
+    nodes: Vec<HashMap<usize, AudioBufferSourceNode>>,
     ctx: Option<AudioContext>,
     analyzer: Option<Box<AnalyserNode>>,
     speed: f64,
@@ -93,8 +94,9 @@ struct SamplerState {
 
 pub struct AudioSampler {
     pub init: Callback<NodeRef>,
-    pub play: Callback<usize>,
-    pub pause: Callback<usize>,
+    pub play: Callback<(usize, usize)>,
+    pub pause: Callback<(usize, usize)>,
+    pub pause_all: Callback<()>,
     pub set_speed: Callback<f64>,
     pub is_loaded: bool,
 }
@@ -105,7 +107,7 @@ pub fn use_audio_sampler() -> AudioSampler {
         analyzer: None,
         blobs: VOICES.map(|_| None).to_vec(),
         bufs: VOICES.map(|_| None).to_vec(),
-        nodes: VOICES.map(|_| None).to_vec(),
+        nodes: VOICES.map(|_| HashMap::new()).to_vec(),
         speed: 1.0,
     });
     let is_loaded = use_state_eq(|| false);
@@ -183,12 +185,12 @@ pub fn use_audio_sampler() -> AudioSampler {
     let play = {
         let state = state.clone();
 
-        Callback::from(move |i: usize| {
+        Callback::from(move |(i, count): (usize, usize)| {
             let mut audio = state.borrow_mut();
 
-            if let Some(node) = &audio.nodes[i] {
-                node.stop();
-                node.disconnect();
+            if let Some(node) = audio.nodes[i].get(&count) {
+                node.stop().unwrap_or_default();
+                node.disconnect().unwrap_or_default();
             }
 
             if let (Some(audio_ctx), Some(buf), Some(analyzer)) =
@@ -201,7 +203,7 @@ pub fn use_audio_sampler() -> AudioSampler {
                 node.connect_with_audio_node(&*analyzer).unwrap();
                 node.start().unwrap();
 
-                audio.nodes[i] = Some(node);
+                audio.nodes[i].insert(count, node);
             }
         })
     };
@@ -209,10 +211,23 @@ pub fn use_audio_sampler() -> AudioSampler {
     let pause = {
         let state = state.clone();
 
-        Callback::from(move |i: usize| {
+        Callback::from(move |(i, count): (usize, usize)| {
             let state = state.borrow_mut();
-            if let Some(node) = &state.nodes[i] {
+            if let Some(node) = &state.nodes[i].get(&count) {
                 node.set_loop(false);
+            }
+        })
+    };
+
+    let pause_all = {
+        let state = state.clone();
+
+        Callback::from(move |_| {
+            let state = state.borrow_mut();
+            for nodes in &state.nodes {
+                for (_, node) in nodes {
+                    node.set_loop(false);
+                }
             }
         })
     };
@@ -229,6 +244,7 @@ pub fn use_audio_sampler() -> AudioSampler {
         init,
         play,
         pause,
+        pause_all,
         set_speed,
         is_loaded: *is_loaded,
     }

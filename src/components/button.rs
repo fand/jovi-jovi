@@ -9,7 +9,7 @@ use yew::prelude::*;
 #[derive(Properties, PartialEq)]
 pub struct ButtonProps {
     pub voice: Voice,
-    pub onchange: Callback<(usize, bool)>,
+    pub onchange: Callback<(usize, usize, bool)>,
     pub is_playing: bool,
 }
 
@@ -22,10 +22,13 @@ pub fn button(
     }: &ButtonProps,
 ) -> html {
     let button_ref = use_node_ref();
+    let count = use_mut_ref(|| 0 as usize);
 
     // Yew doesn't support touchstart/touchend, so we have to add event listeners manually
     {
         let button_ref = button_ref.clone();
+        let count = count.clone();
+
         let voice = voice.clone();
         let onchange = onchange.clone();
 
@@ -36,20 +39,22 @@ pub fn button(
                     .expect("div_ref not attached to div element");
 
                 let ontouchstart = {
+                    let count = count.clone();
                     let onchange = onchange.clone();
                     Closure::<dyn Fn(_)>::wrap(Box::new(move |e: web_sys::MouseEvent| {
                         log::info!("touchstart");
                         e.prevent_default();
-                        onchange.emit((voice.index, true));
+                        *count.borrow_mut() += 1;
+                        onchange.emit((voice.index, *count.borrow(), true));
                     }))
                 };
 
                 let ontouchend = {
                     let onchange = onchange.clone();
-                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: web_sys::MouseEvent| {
+                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: MouseEvent| {
                         log::info!("touchend");
                         e.prevent_default();
-                        onchange.emit((voice.index, false));
+                        onchange.emit((voice.index, *count.borrow(), false));
                     }))
                 };
 
@@ -70,7 +75,8 @@ pub fn button(
         let voice = voice.clone();
         Callback::from(move |_: web_sys::MouseEvent| {
             log::info!("mousedown");
-            onchange.emit((voice.index, true));
+            *count.borrow_mut() += 1;
+            onchange.emit((voice.index, *count.borrow(), true));
         })
     };
 
