@@ -11,12 +11,35 @@ use web_sys::{
 };
 use yew::{use_effect_with_deps, use_mut_ref, use_state_eq, Callback, NodeRef};
 
+trait Assume {
+    fn assume(&self, msg: &str);
+}
+
+impl<T> Assume for Option<T> {
+    /// Similar to .expect but only shows the error message
+    fn assume(&self, msg: &str) {
+        if self.is_none() {
+            log::warn!("Failed: {}", msg);
+        }
+    }
+}
+
+impl<T, E> Assume for Result<T, E> {
+    fn assume(&self, msg: &str) {
+        if self.is_err() {
+            log::warn!("Failed: {}", msg);
+        }
+    }
+}
+
 const DIM: u32 = 1024;
 const DIM_F64: f64 = DIM as f64;
 const FFT_SIZE: usize = (DIM / 2) as usize;
 
 fn get_canvas_context(canvas_ref: NodeRef) -> CanvasRenderingContext2d {
-    let canvas = canvas_ref.cast::<web_sys::HtmlCanvasElement>().unwrap();
+    let canvas = canvas_ref
+        .cast::<web_sys::HtmlCanvasElement>()
+        .expect("Failed to create HTMLCanvasElement");
 
     canvas.set_width(DIM);
     canvas.set_height(DIM);
@@ -26,7 +49,7 @@ fn get_canvas_context(canvas_ref: NodeRef) -> CanvasRenderingContext2d {
         .unwrap()
         .unwrap()
         .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap()
+        .expect("Failed to get canvas context")
 }
 
 // Setup waveform analyzer
@@ -149,7 +172,7 @@ pub fn use_audio_sampler() -> AudioSampler {
             let analyzer = Box::new(audio_ctx.create_analyser().unwrap());
             analyzer
                 .connect_with_audio_node(&audio_ctx.destination())
-                .unwrap();
+                .expect("Failed to connect AnalyserNode to the destination");
             analyzer.set_fft_size(FFT_SIZE as u32);
 
             // Decode audios and store them to audio_bufs
@@ -189,19 +212,21 @@ pub fn use_audio_sampler() -> AudioSampler {
             let mut audio = state.borrow_mut();
 
             if let Some(node) = audio.nodes[i].get(&count) {
-                node.stop().unwrap_or_default();
-                node.disconnect().unwrap_or_default();
+                node.stop().assume("Stop AudioBufferSourceNode");
+                node.disconnect().assume("Disconnect AudioBufferSourceNode");
             }
 
             if let (Some(audio_ctx), Some(buf), Some(analyzer)) =
                 (&audio.ctx, &audio.bufs[i], &audio.analyzer)
             {
-                let node = audio_ctx.create_buffer_source().unwrap();
+                let node = audio_ctx
+                    .create_buffer_source()
+                    .expect("Failed to create AudioBufferSourceNode");
                 node.set_buffer(Some(&buf));
                 node.set_loop(true);
                 node.playback_rate().set_value(audio.speed as f32);
                 node.connect_with_audio_node(&*analyzer).unwrap();
-                node.start().unwrap();
+                node.start().expect("Failed to start AudioBufferSourceNode");
 
                 audio.nodes[i].insert(count, node);
             }
