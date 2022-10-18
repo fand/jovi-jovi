@@ -1,6 +1,7 @@
 use crate::models::voice::VOICES;
 use gloo_net::http::Request;
 use js_sys::ArrayBuffer;
+use std::collections::HashMap;
 use std::f64::consts::PI;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::{prelude::Closure, JsCast};
@@ -10,12 +11,35 @@ use web_sys::{
 };
 use yew::{use_effect_with_deps, use_mut_ref, use_state_eq, Callback, NodeRef};
 
+trait Assume {
+    fn assume(&self, msg: &str);
+}
+
+impl<T> Assume for Option<T> {
+    /// Similar to .expect but only shows the error message
+    fn assume(&self, msg: &str) {
+        if self.is_none() {
+            log::warn!("Failed: {}", msg);
+        }
+    }
+}
+
+impl<T, E> Assume for Result<T, E> {
+    fn assume(&self, msg: &str) {
+        if self.is_err() {
+            log::warn!("Failed: {}", msg);
+        }
+    }
+}
+
 const DIM: u32 = 1024;
 const DIM_F64: f64 = DIM as f64;
 const FFT_SIZE: usize = (DIM / 2) as usize;
 
 fn get_canvas_context(canvas_ref: NodeRef) -> CanvasRenderingContext2d {
-    let canvas = canvas_ref.cast::<web_sys::HtmlCanvasElement>().unwrap();
+    let canvas = canvas_ref
+        .cast::<web_sys::HtmlCanvasElement>()
+        .expect("Failed to create HTMLCanvasElement");
 
     canvas.set_width(DIM);
     canvas.set_height(DIM);
@@ -25,7 +49,7 @@ fn get_canvas_context(canvas_ref: NodeRef) -> CanvasRenderingContext2d {
         .unwrap()
         .unwrap()
         .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap()
+        .expect("Failed to get canvas context")
 }
 
 // Setup waveform analyzer
@@ -85,7 +109,7 @@ fn setup_canvas(canvas_ctx: CanvasRenderingContext2d, analyzer: Box<AnalyserNode
 struct SamplerState {
     blobs: Vec<Option<ArrayBuffer>>,
     bufs: Vec<Option<AudioBuffer>>,
-    nodes: Vec<Option<AudioBufferSourceNode>>,
+    nodes: Vec<HashMap<usize, AudioBufferSourceNode>>,
     ctx: Option<AudioContext>,
     analyzer: Option<Box<AnalyserNode>>,
     speed: f64,
@@ -93,8 +117,9 @@ struct SamplerState {
 
 pub struct AudioSampler {
     pub init: Callback<NodeRef>,
-    pub play: Callback<usize>,
-    pub pause: Callback<usize>,
+    pub play: Callback<(usize, usize)>,
+    pub pause: Callback<(usize, usize)>,
+    pub pause_all: Callback<()>,
     pub set_speed: Callback<f64>,
     pub is_loaded: bool,
 }
@@ -105,7 +130,7 @@ pub fn use_audio_sampler() -> AudioSampler {
         analyzer: None,
         blobs: VOICES.map(|_| None).to_vec(),
         bufs: VOICES.map(|_| None).to_vec(),
-        nodes: VOICES.map(|_| None).to_vec(),
+        nodes: VOICES.map(|_| HashMap::new()).to_vec(),
         speed: 1.0,
     });
     let is_loaded = use_state_eq(|| false);
@@ -127,7 +152,7 @@ pub fn use_audio_sampler() -> AudioSampler {
                         (*state.borrow_mut()).blobs[i] = Some(res);
 
                         // Upload progres
-                        is_loaded.set(state.borrow().blobs.iter().all(|x| x.is_some()));
+                        is_loaded.set(state.borrow_mut().blobs.iter().all(|x| x.is_some()));
                     }
                 });
                 || {}
@@ -147,7 +172,7 @@ pub fn use_audio_sampler() -> AudioSampler {
             let analyzer = Box::new(audio_ctx.create_analyser().unwrap());
             analyzer
                 .connect_with_audio_node(&audio_ctx.destination())
-                .unwrap();
+                .expect("Failed to connect AnalyserNode to the destination");
             analyzer.set_fft_size(FFT_SIZE as u32);
 
             // Decode audios and store them to audio_bufs
@@ -183,20 +208,27 @@ pub fn use_audio_sampler() -> AudioSampler {
     let play = {
         let state = state.clone();
 
-        Callback::from(move |i: usize| {
+        Callback::from(move |(i, count): (usize, usize)| {
             let mut audio = state.borrow_mut();
+
+            if let Some(node) = audio.nodes[i].get(&count) {
+                node.stop().assume("Stop AudioBufferSourceNode");
+                node.disconnect().assume("Disconnect AudioBufferSourceNode");
+            }
 
             if let (Some(audio_ctx), Some(buf), Some(analyzer)) =
                 (&audio.ctx, &audio.bufs[i], &audio.analyzer)
             {
-                let node = audio_ctx.create_buffer_source().unwrap();
+                let node = audio_ctx
+                    .create_buffer_source()
+                    .expect("Failed to create AudioBufferSourceNode");
                 node.set_buffer(Some(&buf));
                 node.set_loop(true);
                 node.playback_rate().set_value(audio.speed as f32);
                 node.connect_with_audio_node(&*analyzer).unwrap();
-                node.start().unwrap();
+                node.start().expect("Failed to start AudioBufferSourceNode");
 
-                audio.nodes[i] = Some(node);
+                audio.nodes[i].insert(count, node);
             }
         })
     };
@@ -204,10 +236,23 @@ pub fn use_audio_sampler() -> AudioSampler {
     let pause = {
         let state = state.clone();
 
-        Callback::from(move |i: usize| {
+        Callback::from(move |(i, count): (usize, usize)| {
             let state = state.borrow_mut();
-            if let Some(node) = &state.nodes[i] {
+            if let Some(node) = &state.nodes[i].get(&count) {
                 node.set_loop(false);
+            }
+        })
+    };
+
+    let pause_all = {
+        let state = state.clone();
+
+        Callback::from(move |_| {
+            let state = state.borrow_mut();
+            for nodes in &state.nodes {
+                for (_, node) in nodes {
+                    node.set_loop(false);
+                }
             }
         })
     };
@@ -224,6 +269,7 @@ pub fn use_audio_sampler() -> AudioSampler {
         init,
         play,
         pause,
+        pause_all,
         set_speed,
         is_loaded: *is_loaded,
     }

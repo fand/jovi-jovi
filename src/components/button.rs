@@ -9,7 +9,7 @@ use yew::prelude::*;
 #[derive(Properties, PartialEq)]
 pub struct ButtonProps {
     pub voice: Voice,
-    pub onchange: Callback<(usize, bool)>,
+    pub onchange: Callback<(usize, usize, bool)>,
     pub is_playing: bool,
 }
 
@@ -26,6 +26,7 @@ pub fn button(
     // Yew doesn't support touchstart/touchend, so we have to add event listeners manually
     {
         let button_ref = button_ref.clone();
+
         let voice = voice.clone();
         let onchange = onchange.clone();
 
@@ -37,19 +38,31 @@ pub fn button(
 
                 let ontouchstart = {
                     let onchange = onchange.clone();
-                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: web_sys::MouseEvent| {
-                        log::info!("touchstart");
+                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: TouchEvent| {
                         e.prevent_default();
-                        onchange.emit((voice.index, true));
+
+                        let touches = e.changed_touches();
+                        for i in 0..touches.length() {
+                            let t = touches.item(i);
+                            let touch_id = t.map_or(0, |t| t.identifier() as usize);
+                            log::info!(">> touchstart {:?}", touch_id);
+                            onchange.emit((voice.index, touch_id, true));
+                        }
                     }))
                 };
 
                 let ontouchend = {
                     let onchange = onchange.clone();
-                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: web_sys::MouseEvent| {
-                        log::info!("touchend");
+                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: TouchEvent| {
                         e.prevent_default();
-                        onchange.emit((voice.index, false));
+
+                        let touches = e.changed_touches();
+                        for i in 0..touches.length() {
+                            let t = touches.item(i);
+                            let touch_id = t.map_or(0, |t| t.identifier() as usize);
+                            log::info!(">> touchend {:?}", touch_id);
+                            onchange.emit((voice.index, touch_id, false));
+                        }
                     }))
                 };
 
@@ -70,7 +83,7 @@ pub fn button(
         let voice = voice.clone();
         Callback::from(move |_: web_sys::MouseEvent| {
             log::info!("mousedown");
-            onchange.emit((voice.index, true));
+            onchange.emit((voice.index, 0, true));
         })
     };
 

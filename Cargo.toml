@@ -31,4 +31,6 @@ features = [
   'MediaElementAudioSourceNode',
   'CanvasRenderingContext2d',
   'ImageData',
+  'Touch',
+  'TouchList',
 ]

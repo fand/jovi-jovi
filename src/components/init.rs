@@ -24,7 +24,7 @@ pub fn init() -> html {
     html! {
         <div class="app">
             {if *is_playing { html! {
-                <App play={sampler.play.clone()} pause={sampler.pause.clone()} set_speed={sampler.set_speed.clone()}/>
+                <App play={sampler.play.clone()} pause={sampler.pause.clone()} pause_all={sampler.pause_all.clone()} set_speed={sampler.set_speed.clone()}/>
             }} else { html! {
                 <div class="mask" onclick={onclick_mask.clone()}>
                     <h1>{"JOVI JOVI"}</h1>
