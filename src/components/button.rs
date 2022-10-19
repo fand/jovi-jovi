@@ -1,9 +1,4 @@
-use crate::{
-    models::voice::Voice,
-    utils::{el_add_event_listener, el_remove_event_listener},
-};
-use wasm_bindgen::prelude::Closure;
-use web_sys::HtmlElement;
+use crate::models::voice::Voice;
 use yew::prelude::*;
 
 #[derive(Properties, PartialEq)]
@@ -22,61 +17,38 @@ pub fn button(
     }: &ButtonProps,
 ) -> html {
     let button_ref = use_node_ref();
+    let voice_index = voice.index;
 
-    // Yew doesn't support touchstart/touchend, so we have to add event listeners manually
-    {
-        let button_ref = button_ref.clone();
-
-        let voice = voice.clone();
+    let ontouchstart = {
         let onchange = onchange.clone();
 
-        use_effect_with_deps(
-            move |button_ref| {
-                let button = button_ref
-                    .cast::<HtmlElement>()
-                    .expect("div_ref not attached to div element");
+        Callback::from(move |e: TouchEvent| {
+            e.prevent_default();
 
-                let ontouchstart = {
-                    let onchange = onchange.clone();
-                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: TouchEvent| {
-                        e.prevent_default();
+            let touches = e.changed_touches();
+            for i in 0..touches.length() {
+                let t = touches.item(i);
+                let touch_id = t.map_or(0, |t| t.identifier() as usize);
+                log::info!(">> touchstart {:?}", touch_id);
+                onchange.emit((voice_index, touch_id, true));
+            }
+        })
+    };
 
-                        let touches = e.changed_touches();
-                        for i in 0..touches.length() {
-                            let t = touches.item(i);
-                            let touch_id = t.map_or(0, |t| t.identifier() as usize);
-                            log::info!(">> touchstart {:?}", touch_id);
-                            onchange.emit((voice.index, touch_id, true));
-                        }
-                    }))
-                };
+    let ontouchend = {
+        let onchange = onchange.clone();
+        Callback::from(move |e: TouchEvent| {
+            e.prevent_default();
 
-                let ontouchend = {
-                    let onchange = onchange.clone();
-                    Closure::<dyn Fn(_)>::wrap(Box::new(move |e: TouchEvent| {
-                        e.prevent_default();
-
-                        let touches = e.changed_touches();
-                        for i in 0..touches.length() {
-                            let t = touches.item(i);
-                            let touch_id = t.map_or(0, |t| t.identifier() as usize);
-                            log::info!(">> touchend {:?}", touch_id);
-                            onchange.emit((voice.index, touch_id, false));
-                        }
-                    }))
-                };
-
-                el_add_event_listener(&button, "touchstart", &ontouchstart);
-                el_add_event_listener(&button, "touchend", &ontouchend);
-
-                move || {
-                    el_remove_event_listener(&button, "touchstart", &ontouchstart);
-                    el_remove_event_listener(&button, "touchend", &ontouchend);
-                }
-            },
-            button_ref,
-        );
-    }
+            let touches = e.changed_touches();
+            for i in 0..touches.length() {
+                let t = touches.item(i);
+                let touch_id = t.map_or(0, |t| t.identifier() as usize);
+                log::info!(">> touchend {:?}", touch_id);
+                onchange.emit((voice_index, touch_id, false));
+            }
+        })
+    };
 
     let onmousedown = {
         let onchange = onchange.clone();
@@ -91,6 +63,8 @@ pub fn button(
         <button type="button"
             class={if *is_playing { "playing" } else { "" } }
             ref={button_ref}
+            ontouchstart={ontouchstart}
+            ontouchend={ontouchend}
             onmousedown={onmousedown}>
             { voice.name }
         </button>
